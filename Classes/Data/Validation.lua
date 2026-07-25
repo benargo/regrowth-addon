@@ -504,3 +504,76 @@ function Validation:IsValidInput(inputData, type)
 
     return false;
 end
+
+-- Sync payloads carry data that's already been transformed (see
+-- Transformers.lua) by the officer who ran the import, so they don't match
+-- the raw-import schemas above (those validate pre-transform shapes, e.g.
+-- LootReceived import rows vs. the by-player-name map actually stored).
+-- These validate the stored/transformed shape instead, just enough to stop
+-- a malformed payload from reaching RegrowthData.Storage and crashing
+-- readers like Tooltips.lua downstream.
+local function isValidSyncSystemData(data)
+    return type(data) == "table";
+end
+
+local function isValidSyncPrioritiesData(data)
+    return Regrowth:isArray(data);
+end
+
+local function isValidSyncItemsData(data)
+    return Regrowth:isArray(data);
+end
+
+local function isValidSyncPlayersData(data)
+    return Regrowth:isArray(data);
+end
+
+local function isValidSyncLootCouncilData(data)
+    return type(data) == "string" or Regrowth:isArray(data);
+end
+
+local function isValidSyncLootReceivedData(data)
+    if type(data) ~= "table" then
+        return false;
+    end
+
+    for _, entries in pairs(data) do
+        if not Regrowth:isArray(entries) then
+            return false;
+        end
+    end
+
+    return true;
+end
+
+local function isValidSyncWishlistsData(data)
+    return Regrowth:isArray(data);
+end
+
+local function isValidSyncPhasesData(data)
+    return Regrowth:isArray(data);
+end
+
+-- Per-table validators, keyed the same way as RegrowthData.Storage, used
+-- to sanity-check incoming comm-sync payloads (which arrive one table at
+-- a time, already transformed) before they're written to storage.
+local SYNC_TABLE_VALIDATORS = {
+    System = isValidSyncSystemData,
+    Priorities = isValidSyncPrioritiesData,
+    Items = isValidSyncItemsData,
+    Players = isValidSyncPlayersData,
+    LootCouncil = isValidSyncLootCouncilData,
+    LootReceived = isValidSyncLootReceivedData,
+    Wishlists = isValidSyncWishlistsData,
+    Phases = isValidSyncPhasesData,
+};
+
+function Validation:IsValidSyncTableData(tableName, data)
+    local validator = SYNC_TABLE_VALIDATORS[tableName];
+
+    if not validator then
+        return false;
+    end
+
+    return validator(data);
+end

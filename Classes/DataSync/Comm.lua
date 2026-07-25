@@ -57,10 +57,25 @@ Regrowth.Comm = Comm;
 ---@type Regrowth.Data
 local RegrowthData = Regrowth.Data;
 
-local function senderIsOfficer(senderGUID)
-    local rankOrder = C_GuildInfo.GetGuildRankOrder(senderGUID);
+-- Trusts the same rank-name-based officer definition used everywhere else
+-- (see Utils/helpers.lua's OFFICER_RANK_NAMES/getAllGuildOfficerNames),
+-- rather than a separate rankOrder-based check, so a sender who's an
+-- officer by rank name can't be rejected (or a non-officer wrongly
+-- admitted) due to the two mechanisms disagreeing.
+local function senderIsOfficer(senderName)
+    if type(senderName) ~= "string" or Regrowth:empty(senderName) then
+        return false;
+    end
 
-    return rankOrder <= 4;
+    local nameNoRealm = senderName:match("(.+)-") or senderName;
+
+    for _, officerName in ipairs(Regrowth:getAllGuildOfficerNames()) do
+        if Regrowth:iEquals(officerName, nameNoRealm) then
+            return true;
+        end
+    end
+
+    return false;
 end
 
 function Regrowth.Ace:OnCommReceived(prefix, payload, distribution, sender)
@@ -76,11 +91,10 @@ function Regrowth.Ace:OnCommReceived(prefix, payload, distribution, sender)
         return;
     end
 
-    Regrowth:debug(payload.senderGUID);
+    Regrowth:debug(payload.sender);
 
-    if (not senderIsOfficer(payload.senderGUID)) then
-        Regrowth:error("Received message from non-officer GUID = " ..
-            payload.senderGUID .. " | Name = " .. payload.sender);
+    if (not senderIsOfficer(payload.sender)) then
+        Regrowth:error("Received message from non-officer. Name = " .. tostring(payload.sender));
         return;
     end
 

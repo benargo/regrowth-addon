@@ -251,6 +251,11 @@ local function UpdateLocalDataFromSync(data, table)
         return false;
     end
 
+    if not RegrowthData.Validation:IsValidSyncTableData(table, data.data) then
+        Regrowth:error("Sync update for '" .. table .. "' rejected - failed schema validation.");
+        return false;
+    end
+
     local currentData = RegrowthData.Storage[table];
     local currentTimestamp = currentData and currentData.timestamp or 0;
     local incomingTimestamp = data.timestamp or 0;

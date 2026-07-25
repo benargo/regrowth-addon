@@ -124,7 +124,7 @@ local function TransformedLootReceivedData(lootReceivedData)
     local filteredData = {};
 
     for _, lrData in ipairs(lootReceivedData) do
-        if lrData.response ~= "Disenchant" or lrData.response ~= "offspec" then
+        if lrData.response ~= "Disenchant" and lrData.response ~= "offspec" then
             local playerName = lrData.player:match("(.+)-");
 
             if not filteredData[playerName] then
