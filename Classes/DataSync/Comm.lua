@@ -93,25 +93,28 @@ function Regrowth.Ace:OnCommReceived(prefix, payload, distribution, sender)
 
     Regrowth:debug(payload.sender);
 
-    if (not senderIsOfficer(payload.sender)) then
-        Regrowth:error("Received message from non-officer. Name = " .. tostring(payload.sender));
+    -- `sender` is the identity AceComm itself verified this message came
+    -- from; payload.sender/payload.senderFqn are just strings the sender
+    -- put in their own message and can set to anything. Validate the
+    -- payload's claimed identity against the real `sender` first, so
+    -- everything below is checked against a name we know is genuine.
+    if (type(payload.senderFqn) ~= "string" or Regrowth:empty(payload.senderFqn)) then
+        return;
+    end
+
+    local ciSenderFqn = strlower(strtrim(payload.senderFqn));
+    local ciPlayerName = strlower(strtrim(sender));
+
+    if (not Regrowth:strStartsWith(ciSenderFqn, ciPlayerName)) then
+        return;
+    end
+
+    if (not senderIsOfficer(sender)) then
+        Regrowth:error("Received message from non-officer. Name = " .. tostring(sender));
         return;
     end
 
     payload.channel = distribution;
-
-    if (payload.senderFqn) then
-        local ciSenderFqn = strlower(strtrim(payload.senderFqn));
-        local ciPlayerName = strlower(strtrim(sender));
-
-        if (not Regrowth:strStartsWith(ciSenderFqn, ciPlayerName)) then
-            return;
-        end
-    end
-
-    if (not payload.senderFqn or not type(payload.senderFqn) == "string") then
-        return;
-    end
 
     Comm:dispatch(Regrowth.Comm.Message.newFromReceived(payload));
 end
