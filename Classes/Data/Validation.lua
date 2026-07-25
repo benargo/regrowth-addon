@@ -280,6 +280,50 @@ local function isValidCouncillorsSchema(councillorsData)
     return true;
 end
 
+local function isValidPhasesSchema(phasesData)
+    local function isValidPhasesIndexSchema(phaseData)
+        if type(phaseData) ~= "table" then
+            Regrowth:debug("8.2.1");
+            return false;
+        end
+
+        if type(phaseData.number) ~= "number" then
+            Regrowth:debug("8.2.2");
+            return false;
+        end
+
+        if type(phaseData.start_date) ~= "number" then
+            Regrowth:debug("8.2.3");
+            return false;
+        end
+
+        return true;
+    end
+
+    if not Regrowth:isArray(phasesData) then
+        Regrowth:debug("8.1");
+        return false;
+    end
+
+    local idx = 0;
+
+    for _ in pairs(phasesData) do
+        idx = idx + 1;
+
+        if not isValidPhasesIndexSchema(phasesData[idx]) then
+            Regrowth:debug("8.2");
+            return false;
+        end
+    end
+
+    if idx < 1 then
+        Regrowth:debug("8.3");
+        return false;
+    end
+
+    return true;
+end
+
 local function isValidSchema(inputData)
     if type(inputData) ~= "table" then
         Regrowth:debug("0");
@@ -311,9 +355,152 @@ local function isValidSchema(inputData)
         return false;
     end
 
+    if inputData.phases and not isValidPhasesSchema(inputData.phases) then
+        Regrowth:debug("8");
+        return false;
+    end
+
     return true;
 end
 
-function Validation:IsValidInput(inputData)
-    return isValidSchema(inputData);
+local function isValidRCSchema(inputData)
+    local function isValidRCIndexSchema(rcIndexData)
+        if type(rcIndexData) ~= "table" then
+            Regrowth:debug("6.2.1");
+            return false;
+        end
+
+        if type(rcIndexData.id) ~= "string" and type(rcIndexData.id) ~= "number" then
+            Regrowth:debug("6.2.2");
+            return false;
+        end
+
+        if type(rcIndexData.player) ~= "string" then
+            Regrowth:debug("6.2.3");
+            return false;
+        end
+
+        if not rcIndexData.player:match("-") then
+            Regrowth:debug("6.2.4");
+            return false;
+        end
+
+        if type(rcIndexData.itemID) ~= "number" then
+            Regrowth:debug("6.2.5");
+            return false;
+        end
+
+        if type(rcIndexData.itemName) ~= "string" then
+            Regrowth:debug("6.2.6");
+            return false;
+        end
+
+        if type(rcIndexData.itemString) ~= "string" then
+            Regrowth:debug("6.2.7");
+            return false;
+        end
+
+        if type(rcIndexData.servertime) ~= "number" then
+            Regrowth:debug("6.2.8");
+            return false;
+        end
+
+        if type(rcIndexData.date) ~= "string" then
+            Regrowth:debug("6.2.9");
+            return false;
+        end
+
+        if type(rcIndexData.time) ~= "string" then
+            Regrowth:debug("6.2.10");
+            return false;
+        end
+
+        if rcIndexData.response ~= nil and type(rcIndexData.response) ~= "string" then
+            Regrowth:debug("6.2.11");
+            return false;
+        end
+
+        return true;
+    end
+
+    if not Regrowth:isArray(inputData) then
+        Regrowth:debug("6.1");
+        return false;
+    end
+
+    local idx = 0;
+
+    for _ in pairs(inputData) do
+        idx = idx + 1;
+
+        if not isValidRCIndexSchema(inputData[idx]) then
+            Regrowth:debug("6.2");
+            return false;
+        end
+    end
+
+    return true;
+end
+
+local function isValidWishlistsSchema(inputData)
+    local function isValidWishlistsItemSchema(itemData)
+        if not Regrowth:isArray(itemData) then
+            Regrowth:debug("7.2.1");
+            return false;
+        end
+
+        for _, nameData in ipairs(itemData) do
+            if type(nameData) ~= "string" then
+                Regrowth:debug("7.2.2");
+                return false;
+            end
+
+            if not nameData:match("[^|]+") then
+                Regrowth:debug("7.2.3");
+                return false;
+            end
+        end
+
+        return true;
+    end
+
+    if type(inputData) ~= "table" then
+        Regrowth:debug("7.1");
+        return false;
+    end
+
+    if type(inputData.wishlists) ~= "table" then
+        Regrowth:debug("7.2");
+        return false;
+    end
+
+    for itemId, itemData in pairs(inputData.wishlists) do
+        if not tonumber(itemId) then
+            Regrowth:debug("7.3");
+            return false;
+        end
+
+        if not isValidWishlistsItemSchema(itemData) then
+            Regrowth:debug("7.4");
+            return false;
+        end
+    end
+
+    return true;
+end
+
+function Validation:IsValidInput(inputData, type)
+    if type == "Website" then
+        return isValidSchema(inputData);
+    end
+
+    if type == "RCLootCouncil" then
+        return isValidRCSchema(inputData);
+    end
+
+    if type == "Wishlists" then
+        return isValidWishlistsSchema(inputData);
+    end
+
+    return false;
 end
