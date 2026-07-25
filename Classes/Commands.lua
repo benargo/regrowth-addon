@@ -16,22 +16,17 @@ local Commands = {
         Regrowth.Frames:ToggleMainUIFrame();
     end,
     senddatasync = function()
-        if Regrowth.User.canSendUpdates then
-            local receivers = RegrowthData.Storage.LootCouncil.data;
+        if C_GuildInfo.IsGuildOfficer() then
+            -- Manual command is an explicit override - always allowed to
+            -- run regardless of what the election decided.
+            Regrowth.Comm._isActiveSyncer = true;
 
-            for receiver in string.gmatch(receivers, '([^,]+)') do
-                receiver = receiver:gsub("%s+", "")
+            local receivers = RegrowthData:GetLootCouncilReceivers();
 
-                Regrowth:debug("Sending data to '" .. receiver .. "'.");
-
-                local message = Regrowth.Comm.Message.new(
-                    RegrowthData.Constants.Comm.Actions.handlereceiveddata,
-                    Regrowth_Data,
-                    "WHISPER",
-                    receiver
-                );
-
-                message:send();
+            for _, receiver in ipairs(receivers) do
+                if not Regrowth:iEquals(receiver, Regrowth.User.name) then
+                    Regrowth.Comm:QueueSync(receiver);
+                end
             end
 
             return;
@@ -39,7 +34,63 @@ local Commands = {
 
         Regrowth:error("You are not authorised to send data.");
     end,
+    syncto = function(name)
+        if not C_GuildInfo.IsGuildOfficer() then
+            Regrowth:error("You are not authorised to send data.");
+            return;
+        end
+
+        -- Manual command is an explicit override - always allowed to run
+        -- regardless of what the election decided.
+        Regrowth.Comm._isActiveSyncer = true;
+
+        name = name and strtrim(name) or "";
+
+        if Regrowth:empty(name) then
+            Regrowth:error("Usage: /rg syncto [player name]");
+            return;
+        end
+
+        local receivers = RegrowthData:GetLootCouncilReceivers();
+        local matchedReceiver = nil;
+
+        for _, receiver in ipairs(receivers) do
+            if Regrowth:iEquals(receiver, name) then
+                matchedReceiver = receiver;
+                break;
+            end
+        end
+
+        if not matchedReceiver then
+            Regrowth:error("'" .. name .. "' is not a loot council member.");
+            return;
+        end
+
+        if Regrowth.Comm:IsRecipientUpToDate(matchedReceiver) then
+            Regrowth:warning("'" .. matchedReceiver .. "' already has the current data - nothing to sync.");
+            return;
+        end
+
+        Regrowth.Comm:QueueSyncPriority(matchedReceiver);
+
+        Regrowth:success("'" .. matchedReceiver .. "' moved to the front of the sync queue.");
+    end,
+    toggle = function(type)
+        if Regrowth_Config.TooltipToggles[type] then
+            Regrowth_Config.TooltipToggles[type] = false;
+            return;
+        end
+
+        if not Regrowth_Config.TooltipToggles[type] then
+            Regrowth_Config.TooltipToggles[type] = true;
+            return;
+        end
+    end,
 };
+
+local function HookinTime()
+    Regrowth:debug("kek");
+end
 
 local function _dispatch(str)
     local command = str:match("^(%S+)");
