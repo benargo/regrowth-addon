@@ -9,7 +9,7 @@ local Tooltips = {
 ---@type Tooltips
 Regrowth.Tooltips = Tooltips;
 
-local function AddRegrowthItemDataToTooltip(tooltip)
+local function GetItemId(tooltip)
     local _, link = tooltip:GetItem();
     if not link then
         return;
@@ -20,19 +20,104 @@ local function AddRegrowthItemDataToTooltip(tooltip)
         return;
     end
 
-    local itemDataById = Regrowth:findByKeyInArray(Regrowth_Data.Items.data, "item_id", itemID);
+    return itemID;
+end
 
-    if not itemDataById then
+local function AddWishlistDataToTooltip(tooltip)
+    if not Regrowth_Config.TooltipToggles["wishlist"] and not IsInRaid() then
         return;
     end
 
-    tooltip:AddLine(" ");
-    tooltip:AddLine("Regrowth Bias:", 0.1, 1, 0.6);
-    tooltip:AddLine(itemDataById.text, 1, 1, 1, true);
+    local itemID = GetItemId(tooltip);
+
+    if not itemID then
+        return
+    end
+
+    local wanted = Regrowth:findByKeyInArray(Regrowth_Data.Wishlists.data, "itemId", itemID);
+
+    if wanted then
+        tooltip:AddLine(" ");
+        tooltip:AddLine("Wanted by:", 0.1, 1, 0.6);
+
+        local wantedBy = wanted.wantedBy;
+
+        for _, wantedData in ipairs(wantedBy) do
+            tooltip:AddLine(wantedData.name, 1, 1, 1);
+        end
+    end
+end
+
+local function AddRegrowthItemDataToTooltip(tooltip)
+    if not Regrowth_Config.TooltipToggles["bias"] and not IsInRaid() then
+        return;
+    end
+
+    local itemID = GetItemId(tooltip);
+
+    if not itemID then
+        return
+    end
+
+    local itemDataById = Regrowth:findByKeyInArray(Regrowth_Data.Items.data, "item_id", itemID);
+
+
+    if itemDataById and itemDataById.text then
+        tooltip:AddLine(" ");
+        tooltip:AddLine("Regrowth Bias:", 0.1, 1, 0.6);
+        tooltip:AddLine(itemDataById.text, 1, 1, 1, true);
+    end
+end
+
+local function AddLootReceivedPlayerDataToTooltip(tooltip, name)
+    local receivedDataByName = Regrowth:findByKey(Regrowth_Data.LootReceived.data, name);
+
+    if not receivedDataByName then
+        return;
+    end
+
+    local lootCount = #receivedDataByName;
+    local currentPhase = Regrowth.Data:GetCurrentPhase();
+    local previousPhase = Regrowth.Data:GetPreviousPhase();
+
+    -- Total in white, current-phase count in green, previous-phase count
+    -- in yellow. Inline colour codes so all three can share one line.
+    -- Once phases are configured, "Total" is scoped to just those two
+    -- phases (not all-time) - anything from an older phase is disregarded
+    -- for both the split and the total. Falls back to the all-time total
+    -- if no phases are configured yet at all.
+    local totalText;
+
+    if currentPhase or previousPhase then
+        local phaseCounts = Regrowth.Data:GetPhaseLootCounts(receivedDataByName);
+        local scopedTotal = phaseCounts.current + phaseCounts.previous;
+
+        totalText = "|cffffffff" .. scopedTotal .. "|r";
+
+        if currentPhase then
+            totalText = totalText .. " |cff00ff00(P" .. currentPhase.phase_number .. ": " ..
+                phaseCounts.current .. ")|r";
+        end
+
+        if previousPhase then
+            totalText = totalText .. " |cffffff00(P" .. previousPhase.phase_number .. ": " ..
+                phaseCounts.previous .. ")|r";
+        end
+    else
+        totalText = "|cffffffffAll Phases " .. lootCount .. "|r";
+    end
+
+    tooltip:AddDoubleLine("Total Loot:", totalText, 0.1, 1, 0.6, 1, 1, 1);
+
+    if lootCount > 0 then
+        local lastWinEpoch = Regrowth:findByKey(receivedDataByName[1].when, "epoch");
+        tooltip:AddDoubleLine("Last Win:", Regrowth:formatEpochAsDateOnly(lastWinEpoch), 0.1, 1, 0.6, 1, 1, 1);
+    end
+
 end
 
 local function AddRegrowthPlayerDataToTooltip(tooltip)
-    if not IsInRaid() then
+    if not Regrowth_Config.TooltipToggles["players"] and not IsInRaid() then
         return;
     end
 
@@ -49,10 +134,8 @@ local function AddRegrowthPlayerDataToTooltip(tooltip)
     tooltip:AddLine(" ");
     tooltip:AddLine("Guild Raid Stats:", 0.1, 1, 0.6);
     tooltip:AddDoubleLine("Attendance:", attendance, 1, 1, 1, 1, 1, 1);
-    -- local lootCount = playerDataByName.loot or 0;
-    -- local lastWin = playerDataByName.last or "N/A";
-    -- local lootText = string.format("%d Won (%s)", lootCount, lastWin);
-    -- tooltip:AddDoubleLine("MS Loot:", lootText, 1, 1, 1, 1, 1, 1);
+
+    AddLootReceivedPlayerDataToTooltip(tooltip, name);
 end
 
 function Tooltips:_init()
@@ -61,7 +144,16 @@ function Tooltips:_init()
     end
 
     GameTooltip:HookScript("OnTooltipSetItem", AddRegrowthItemDataToTooltip);
+    GameTooltip:HookScript("OnTooltipSetItem", AddWishlistDataToTooltip);
     GameTooltip:HookScript("OnTooltipSetUnit", AddRegrowthPlayerDataToTooltip);
+
+    -- ItemRefTooltip is a separate frame from GameTooltip - it's what
+    -- actually renders when clicking an item link in chat, so it needs
+    -- its own hooks or bias/wishlist data never shows there.
+    if ItemRefTooltip then
+        ItemRefTooltip:HookScript("OnTooltipSetItem", AddRegrowthItemDataToTooltip);
+        ItemRefTooltip:HookScript("OnTooltipSetItem", AddWishlistDataToTooltip);
+    end
 
     self._initialized = true;
 end
