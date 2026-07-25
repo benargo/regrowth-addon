@@ -21,12 +21,13 @@ local RegrowthData = {
             Actions = {
                 nex = 1,
                 handlereceiveddata = 2,
+                versionannounce = 3,
             },
         },
     },
     Version = {
         current = "0.0",
-        latest = "0.6",
+        latest = "0.8.0-beta.1",
     },
     Storage = {
         LootCouncil = defaultStringData,
@@ -34,6 +35,9 @@ local RegrowthData = {
         Priorities = defaultTabulatedData,
         Items = defaultTabulatedData,
         Players = defaultTabulatedData,
+        LootReceived = defaultTabulatedData,
+        Wishlists = defaultTabulatedData,
+        Phases = defaultTabulatedData
     }
 };
 
@@ -50,30 +54,80 @@ end
 
 local function UpdateSystem(systemData)
     if isOlderData(systemData.timestamp, RegrowthData.Storage.System.timestamp) then
-        Regrowth:warning("Update for 'System' skipped - Current data is newer.");
-        return;
+        Regrowth:debug("Update for 'System' skipped - current data is already current or newer.");
+        return false;
     end
 
     Regrowth:debug("Updating 'System'...");
 
     RegrowthData.Storage.System = systemData;
+
+    return true;
+end
+
+local function UpdatePhases(phasesData)
+    if isOlderData(phasesData.timestamp, RegrowthData.Storage.Phases.timestamp) then
+        Regrowth:debug("Update for 'Phases' skipped - current data is already current or newer.");
+        return false;
+    end
+
+    Regrowth:debug("Updating 'Phases'...");
+
+    -- Map to our internal shape and sort oldest-first, so we can derive
+    -- each phase's end_date as "1 second before the next phase starts" -
+    -- the website only gives us start dates, not end dates.
+    local mappedPhases = {};
+
+    for _, phase in ipairs(phasesData.data) do
+        table.insert(mappedPhases, {
+            phase_number = phase.number,
+            start_date = phase.start_date,
+        });
+    end
+
+    table.sort(mappedPhases, function(a, b)
+        return a.start_date < b.start_date;
+    end);
+
+    for i = 1, #mappedPhases - 1 do
+        mappedPhases[i].end_date = mappedPhases[i + 1].start_date - 1;
+    end
+    -- The newest phase (last after this ascending sort) gets no end_date -
+    -- it's still ongoing.
+
+    -- Now flip to newest-first, so [1] is always "current" and [2] is
+    -- always "previous", regardless of how many phases were provided.
+    local sortedPhases = {};
+
+    for i = #mappedPhases, 1, -1 do
+        table.insert(sortedPhases, mappedPhases[i]);
+    end
+
+    RegrowthData.Storage.Phases = {
+        data = sortedPhases,
+        timestamp = phasesData.timestamp,
+    };
+
+    return true;
 end
 
 local function UpdatePriorities(prioritiesData)
     if isOlderData(prioritiesData.timestamp, RegrowthData.Storage.Priorities.timestamp) then
-        Regrowth:warning("Update for 'Priorities' skipped - Current data is newer.");
-        return;
+        Regrowth:debug("Update for 'Priorities' skipped - current data is already current or newer.");
+        return false;
     end
 
     Regrowth:debug("Updating 'Priorities'...");
 
     RegrowthData.Storage.Priorities = prioritiesData;
+
+    return true;
 end
 
 local function UpdateItems(itemsData)
     if isOlderData(itemsData.timestamp, RegrowthData.Storage.Items.timestamp) then
-        Regrowth:warning("Update for 'Items' skipped - Current data is newer.");
-        return;
+        Regrowth:debug("Update for 'Items' skipped - current data is already current or newer.");
+        return false;
     end
 
     Regrowth:debug("Updating 'Items'...");
@@ -84,23 +138,27 @@ local function UpdateItems(itemsData)
         data = transformedItemsData,
         timestamp = itemsData.timestamp,
     };
+
+    return true;
 end
 
 local function UpdatePlayers(playersData)
     if isOlderData(playersData.timestamp, RegrowthData.Storage.Players.timestamp) then
-        Regrowth:warning("Update for 'Players' skipped - Current data is newer.");
-        return;
+        Regrowth:debug("Update for 'Players' skipped - current data is already current or newer.");
+        return false;
     end
 
     Regrowth:debug("Updating 'Players'...");
 
     RegrowthData.Storage.Players = playersData;
+
+    return true;
 end
 
 local function UpdateLootCouncil(lootCouncilData)
     if isOlderData(lootCouncilData.timestamp, RegrowthData.Storage.LootCouncil.timestamp) then
-        Regrowth:warning("Update for 'LootCouncil' skipped - Current data is newer.");
-        return;
+        Regrowth:debug("Update for 'LootCouncil' skipped - current data is already current or newer.");
+        return false;
     end
 
     Regrowth:debug("Updating 'LootCouncil'...");
@@ -111,6 +169,44 @@ local function UpdateLootCouncil(lootCouncilData)
         data = transformedLootCouncilData,
         timestamp = lootCouncilData.timestamp
     };
+
+    return true;
+end
+
+local function UpdateLootReceivedData(lootReceivedData)
+    if isOlderData(lootReceivedData.timestamp, RegrowthData.Storage.LootReceived.timestamp) then
+        Regrowth:debug("Update for 'LootReceived' skipped - current data is already current or newer.");
+        return false;
+    end
+
+    Regrowth:debug("Updating 'LootReceived'...");
+
+    local transformedLootReceivedData = RegrowthData.Transformers:TransformedLootReceivedData(lootReceivedData.data);
+
+    RegrowthData.Storage.LootReceived = {
+        data = transformedLootReceivedData,
+        timestamp = lootReceivedData.timestamp
+    }
+
+    return true;
+end
+
+local function UpdateWishlistsData(wishlistsData)
+    if isOlderData(wishlistsData.timestamp, RegrowthData.Storage.Wishlists.timestamp) then
+        Regrowth:debug("Update for 'Wishlists' skipped - current data is already current or newer.");
+        return false;
+    end
+
+    Regrowth:debug("Updating 'Wishlists'...");
+
+    local transformedWishlistsData = RegrowthData.Transformers:TransformWishlistsData(wishlistsData.data);
+
+    RegrowthData.Storage.Wishlists = {
+        data = transformedWishlistsData,
+        timestamp = wishlistsData.timestamp
+    }
+
+    return true;
 end
 
 local function UpdateProtectedData(newData, table)
@@ -129,6 +225,18 @@ local function UpdateProtectedData(newData, table)
     if (table == "LootCouncil") then
         return UpdateLootCouncil(newData);
     end
+
+    if (table == "LootReceived") then
+        return UpdateLootReceivedData(newData);
+    end
+
+    if (table == "Wishlists") then
+        return UpdateWishlistsData(newData);
+    end
+
+    if (table == "Phases") then
+        return UpdatePhases(newData);
+    end
 end
 
 local function UpdateOpenData(newData, table)
@@ -138,9 +246,27 @@ local function UpdateOpenData(newData, table)
 end
 
 local function UpdateLocalDataFromSync(data, table)
+    if type(data) ~= "table" then
+        Regrowth:error("Sync update for '" .. table .. "' rejected - malformed payload.");
+        return false;
+    end
+
+    local currentData = RegrowthData.Storage[table];
+    local currentTimestamp = currentData and currentData.timestamp or 0;
+    local incomingTimestamp = data.timestamp or 0;
+
+    if isOlderData(incomingTimestamp, currentTimestamp) then
+        -- Routine and expected (e.g. two officers' data already agreeing) -
+        -- not worth alarming the player with a visible message every time.
+        Regrowth:debug("Sync update for '" .. table .. "' skipped - local data is already current.");
+        return false;
+    end
+
     RegrowthData.Storage[table] = data;
 
-    return RegrowthData:UpdateLocalSavedData();
+    RegrowthData:UpdateLocalSavedData();
+
+    return true;
 end
 
 function RegrowthData:UpdateLocalData(newData, table, timestamp)
@@ -148,7 +274,10 @@ function RegrowthData:UpdateLocalData(newData, table, timestamp)
             table ~= "Priorities" and
             table ~= "Items" and
             table ~= "Players" and
-            table ~= "LootCouncil")
+            table ~= "LootCouncil" and
+            table ~= "LootReceived" and
+            table ~= "Wishlists" and
+            table ~= "Phases")
     then
         Regrowth:error("Invalid table '" .. table .. "'.");
         return;
@@ -162,7 +291,10 @@ function RegrowthData:UpdateLocalData(newData, table, timestamp)
     if (table == "Priorities" or
             table == "Items" or
             table == "Players" or
-            table == "LootCouncil")
+            table == "LootCouncil" or
+            table == "LootReceived" or
+            table == "Wishlists" or
+            table == "Phases")
     then
         return UpdateProtectedData(mappedData, table);
     end
@@ -182,84 +314,297 @@ end
 function RegrowthData:UpdateLocalDataAndSave(newData, table, timestamp)
     if not Regrowth:isCurrentVersion() then
         Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
-        return;
+        return false;
     end
 
-    self:UpdateLocalData(newData, table, timestamp);
+    local applied = self:UpdateLocalData(newData, table, timestamp);
+
     self:UpdateLocalSavedData();
+
+    return applied and true or false;
 end
 
 function RegrowthData:UpdateLocalProtectedDataFromSync(newData)
     if not Regrowth:isCurrentVersion() then
         Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
-        return;
+        return 0, 0;
     end
 
-    if newData["System"] then
-        Regrowth:debug("New 'System' data received. Updating...");
-        UpdateLocalDataFromSync(newData["System"], "System");
+    local appliedCount = 0;
+    local totalCount = 0;
+
+    local function tryUpdate(key)
+        if newData[key] then
+            totalCount = totalCount + 1;
+
+            Regrowth:debug("New '" .. key .. "' data received. Updating...");
+
+            if UpdateLocalDataFromSync(newData[key], key) then
+                appliedCount = appliedCount + 1;
+            end
+        end
     end
 
-    if newData["Priorities"] then
-        Regrowth:debug("New 'Priorities' data received. Updating...");
-        UpdateLocalDataFromSync(newData["Priorities"], "Priorities");
-    end
+    tryUpdate("System");
+    tryUpdate("Priorities");
+    tryUpdate("Items");
+    tryUpdate("Players");
+    tryUpdate("LootCouncil");
+    tryUpdate("LootReceived");
+    tryUpdate("Wishlists");
+    tryUpdate("Phases");
 
-    if newData["Items"] then
-        Regrowth:debug("New 'Items' data received. Updating...");
-        UpdateLocalDataFromSync(newData["Items"], "Items");
-    end
-
-    if newData["Players"] then
-        Regrowth:debug("New 'Players' data received. Updating...");
-        UpdateLocalDataFromSync(newData["Players"], "Players");
-    end
-
-    if newData["LootCouncil"] then
-        Regrowth:debug("New 'LootCouncil' data received. Updating...");
-        UpdateLocalDataFromSync(newData["LootCouncil"], "LootCouncil");
-    end
+    return appliedCount, totalCount;
 end
 
 function RegrowthData:UpdateLocalOpenDataFromSync(newData)
     if not Regrowth:isCurrentVersion() then
         Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
-        return;
+        return 0, 0;
     end
+
+    local appliedCount = 0;
+    local totalCount = 0;
 
     if newData["System"] then
+        totalCount = totalCount + 1;
+
         Regrowth:debug("New 'System' data received. Updating...");
-        UpdateLocalDataFromSync(newData["System"], "System");
+
+        if UpdateLocalDataFromSync(newData["System"], "System") then
+            appliedCount = appliedCount + 1;
+        end
     end
+
+    return appliedCount, totalCount;
 end
 
-function RegrowthData:UpdateLocalDataAndSaveFromImport(importData)
+function RegrowthData:UpdateLocalDataAndSaveFromImport(importData, type)
     if not Regrowth:isCurrentVersion() then
         Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
-        return;
+        return 0, 0;
     end
 
     local timestamp = importData.system and importData.system.date_generated or nil;
+    local appliedCount = 0;
+    local totalCount = 0;
 
+    local function tryImport(field, table)
+        if importData[field] then
+            totalCount = totalCount + 1;
+
+            if self:UpdateLocalDataAndSave(importData[field], table, timestamp) then
+                appliedCount = appliedCount + 1;
+            end
+        end
+    end
+
+    if type == "Website" then
+        tryImport("system", "System");
+        tryImport("priorities", "Priorities");
+        tryImport("items", "Items");
+        tryImport("players", "Players");
+        tryImport("councillors", "LootCouncil");
+        tryImport("phases", "Phases");
+    end
+
+    if type == "RCLootCouncil" then
+        totalCount = totalCount + 1;
+
+        if self:UpdateLocalDataAndSave(importData, "LootReceived", timestamp) then
+            appliedCount = appliedCount + 1;
+        end
+    end
+
+    if type == "Wishlists" then
+        totalCount = totalCount + 1;
+
+        if self:UpdateLocalDataAndSave(importData, "Wishlists", timestamp) then
+            appliedCount = appliedCount + 1;
+        end
+    end
+
+    if appliedCount > 0 then
+        -- New data means the data version has changed, which automatically
+        -- makes every previously-synced recipient's stored version stale
+        -- (see Comm:IsRecipientUpToDate). Give it a couple of minutes
+        -- before pushing it out - if another officer imports around the
+        -- same time, this delay plus the election means only one of them
+        -- ends up syncing it, rather than both immediately racing to send.
+        local delay = Regrowth.Comm.IMPORT_DELAY_SECONDS;
+
+        Regrowth.Comm._nextAllowedElectionTime = GetServerTime() + delay;
+
+        Regrowth.Ace:ScheduleTimer(function()
+            Regrowth.Comm:StartElection();
+        end, delay);
+    end
+
+    return appliedCount, totalCount;
+end
+
+-- Returns the epoch of the most recent loot entry across every player in
+-- LootReceived, i.e. the raid date the last imported loot item was won on -
+-- not when the import itself happened.
+function RegrowthData:GetLastLootReceivedEpoch()
+    local mostRecentEpoch = nil;
+
+    for _, playerEntries in pairs(self.Storage.LootReceived.data) do
+        for _, entry in ipairs(playerEntries) do
+            if entry.when and entry.when.epoch then
+                if not mostRecentEpoch or entry.when.epoch > mostRecentEpoch then
+                    mostRecentEpoch = entry.when.epoch;
+                end
+            end
+        end
+    end
+
+    return mostRecentEpoch;
+end
+
+-- A single number representing "how current is our data overall" - the
+-- newest timestamp across every table. Used to decide whether a given
+-- recipient's last-known-synced version is already up to date.
+function RegrowthData:GetCurrentDataVersion()
+    local tables = {
+        "System", "Priorities", "Items", "Players",
+        "LootCouncil", "LootReceived", "Wishlists", "Phases",
+    };
+
+    local newest = 0;
+
+    for _, tableName in ipairs(tables) do
+        local tableData = self.Storage[tableName];
+        local timestamp = tableData and tableData.timestamp or 0;
+
+        if timestamp > newest then
+            newest = timestamp;
+        end
+    end
+
+    return newest;
+end
+
+-- Phases are stored sorted newest-start-first (see UpdatePhases), so [1] is
+-- always "current" (newest that hasn't necessarily ended) and [2] is
+-- always "previous" (the one directly before it). Returns nil if that
+-- phase isn't configured.
+-- Phases are stored sorted newest-start-first, but a future-dated phase
+-- (e.g. the website pre-populating a phase that hasn't actually started
+-- yet) shouldn't count as "current" until its start_date has actually
+-- passed. Evaluated live against the current time on every call, rather
+-- than baked in at import time, so a phase correctly becomes current the
+-- moment its date arrives - no fresh sync needed.
+function RegrowthData:GetCurrentPhase()
+    local phases = self.Storage.Phases.data;
+    local now = GetServerTime();
+
+    for _, phase in ipairs(phases) do
+        if phase.start_date <= now then
+            return phase;
+        end
+    end
+
+    return nil;
+end
+
+function RegrowthData:GetPreviousPhase()
+    local phases = self.Storage.Phases.data;
+    local now = GetServerTime();
+
+    for i, phase in ipairs(phases) do
+        if phase.start_date <= now then
+            return phases[i + 1];
+        end
+    end
+
+    return nil;
+end
+
+local function epochFallsInPhase(epoch, phase)
+    if not phase or not epoch then
+        return false;
+    end
+
+    if epoch < phase.start_date then
+        return false;
+    end
+
+    if phase.end_date and epoch > phase.end_date then
+        return false;
+    end
+
+    return true;
+end
+
+-- Given a player's LootReceived entries (the array under LootReceived.data
+-- for one name), returns how many fall in the current phase and how many
+-- fall in the previous phase, based on each entry's when.epoch.
+function RegrowthData:GetPhaseLootCounts(playerEntries)
+    local currentPhase = self:GetCurrentPhase();
+    local previousPhase = self:GetPreviousPhase();
+
+    local counts = {
+        current = 0,
+        previous = 0,
+    };
+
+    if not playerEntries then
+        return counts;
+    end
+
+    for _, entry in ipairs(playerEntries) do
+        local epoch = entry.when and entry.when.epoch;
+
+        if epochFallsInPhase(epoch, currentPhase) then
+            counts.current = counts.current + 1;
+        elseif epochFallsInPhase(epoch, previousPhase) then
+            counts.previous = counts.previous + 1;
+        end
+    end
+
+    return counts;
+end
+
+-- The effective loot council receiver list: every current guild officer
+-- (recalculated live, so promotions/demotions apply automatically) plus
+-- anyone manually added via the in-game "Additional Members" box or a
+-- Website import, de-duplicated. This is what auto-sync and the manual
+-- sync commands should actually iterate, rather than reading
+-- Storage.LootCouncil.data directly.
+function RegrowthData:GetLootCouncilReceivers()
+    local receivers = {};
+    local seen = {};
+
+    for _, officerName in ipairs(Regrowth:getAllGuildOfficerNames()) do
+        if not seen[officerName] then
+            seen[officerName] = true;
+            table.insert(receivers, officerName);
+        end
+    end
+
+    for name in self.Storage.LootCouncil.data:gmatch("[^,]+") do
+        name = name:gsub("^%s+", ""):gsub("%s+$", "");
+
+        if name ~= "" and not seen[name] then
+            seen[name] = true;
+            table.insert(receivers, name);
+        end
+    end
+
+    return receivers;
+end
+
+function RegrowthData:GetImportType(importData)
     if importData.system then
-        self:UpdateLocalDataAndSave(importData.system, "System", timestamp);
+        return "Website";
     end
 
-    if importData.priorities then
-        self:UpdateLocalDataAndSave(importData.priorities, "Priorities", timestamp);
+    if importData.wishlists then
+        return "Wishlists";
     end
 
-    if importData.items then
-        self:UpdateLocalDataAndSave(importData.items, "Items", timestamp);
-    end
-
-    if importData.players then
-        self:UpdateLocalDataAndSave(importData.players, "Players", timestamp);
-    end
-
-    if importData.councillors then
-        self:UpdateLocalDataAndSave(importData.councillors, "LootCouncil", timestamp);
-    end
+    return "RCLootCouncil";
 end
 
 function RegrowthData:_init()
@@ -280,6 +625,9 @@ function RegrowthData:_init()
     self.Storage.Priorities = self.Storage.Priorities or defaultTabulatedData;
     self.Storage.Items = self.Storage.Items or defaultTabulatedData;
     self.Storage.Players = self.Storage.Players or defaultTabulatedData;
+    self.Storage.LootReceived = self.Storage.LootReceived or defaultTabulatedData;
+    self.Storage.Wishlists = self.Storage.Wishlists or defaultTabulatedData;
+    self.Storage.Phases = self.Storage.Phases or defaultTabulatedData;
 
     self._initialized = true;
 end
