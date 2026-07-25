@@ -27,6 +27,11 @@ function Message.new(action, content, channel, recipient, onResponse)
     self.senderFqn = Regrowth.User.fqn;
     self.senderGUID = UnitGUID("player");
     self.recipient = recipient or nil;
+    -- GetServerTime() is realm-synced across every connected client, so
+    -- comparing this against GetServerTime() on the recipient's end gives
+    -- a reliable, exact delivery time - not something eyeballed off two
+    -- different chat windows.
+    self.sentAt = GetServerTime();
 
     self.onResponse = onResponse or function() end;
 
@@ -42,6 +47,7 @@ function Message.newFromReceived(payload)
     self.sender = payload.sender;
     self.senderFqn = payload.senderFqn;
     self.recipient = payload.recipient;
+    self.sentAt = payload.sentAt;
 
     return self;
 end
@@ -57,6 +63,7 @@ function Message:compress(unencoded)
         f = unencoded.senderFqn,
         g = unencoded.senderGUID,
         r = unencoded.channel ~= "WHISPER" and unencoded.recipient or nil,
+        t = unencoded.sentAt,
     };
 
     local success, encoded = pcall(
@@ -103,6 +110,7 @@ function Message:decompress(encoded)
         senderFqn = Payload.f or nil,
         senderGUID = Payload.g or nil,
         recipient = Payload.r or nil,
+        sentAt = Payload.t or nil,
     };
 end
 
