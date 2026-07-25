@@ -16,15 +16,38 @@ local function SendDataSync()
 end
 
 local function UpdateLocalLootCouncil(lootCouncil)
-    Regrowth.Data:UpdateLocalDataAndSave(lootCouncil, "LootCouncil");
+    local applied = Regrowth.Data:UpdateLocalDataAndSave(lootCouncil, "LootCouncil");
+
+    if not applied then
+        Regrowth:warning("Loot council not updated - your data is already the same or newer.");
+        return;
+    end
+
+    Regrowth:success("Loot council updated.");
+
+    local delay = Regrowth.Comm.IMPORT_DELAY_SECONDS;
+
+    Regrowth.Comm._nextAllowedElectionTime = GetServerTime() + delay;
+
+    Regrowth.Ace:ScheduleTimer(function()
+        Regrowth.Comm:StartElection();
+    end, delay);
 end
 
-local function UpdateLocalData(importData)
-    Regrowth.Data:UpdateLocalDataAndSaveFromImport(importData);
+local function UpdateLocalData(importData, type)
+    return Regrowth.Data:UpdateLocalDataAndSaveFromImport(importData, type);
 end
 
-local function ValidateData(importData)
-    return Regrowth.Data.Validation:IsValidInput(importData);
+local function ValidateData(importData, type)
+    return Regrowth.Data.Validation:IsValidInput(importData, type);
+end
+
+local function GetImportType(importData)
+    return Regrowth.Data:GetImportType(importData);
+end
+
+local function ToggleConfigOption(toggle)
+    Regrowth.Commands:call("toggle " .. toggle);
 end
 
 local function CreateMainMenuTab(container)
@@ -42,6 +65,80 @@ local function CreateMainMenuTab(container)
     mainMenuCredit:SetText("Addon implementation by Amy. Addon protoype and design by SoulJuice. <3");
     mainMenuCredit:SetFullWidth(true);
     container:AddChild(mainMenuCredit);
+
+    local statusSpacer = Regrowth.AceGUI:Create("Label");
+    statusSpacer:SetText(" ");
+    statusSpacer:SetFullWidth(true);
+    statusSpacer:SetHeight(10);
+    container:AddChild(statusSpacer);
+
+    Regrowth_Config.Activity = Regrowth_Config.Activity or {
+        lastSyncSent = 0,
+        lastSyncReceived = 0,
+    };
+
+    local lastSyncEpoch = math.max(
+        Regrowth_Config.Activity.lastSyncSent or 0,
+        Regrowth_Config.Activity.lastSyncReceived or 0
+    );
+
+    local lastSyncLabel = Regrowth.AceGUI:Create("Label");
+    lastSyncLabel:SetText("Last Sync Received: " .. Regrowth:formatEpochForDisplay(lastSyncEpoch));
+    lastSyncLabel:SetFullWidth(true);
+    container:AddChild(lastSyncLabel);
+
+    local lastLootImportLabel = Regrowth.AceGUI:Create("Label");
+    lastLootImportLabel:SetText("Last Imported Loot Data: " ..
+        Regrowth:formatEpochForDisplay(Regrowth.Data:GetLastLootReceivedEpoch()));
+    lastLootImportLabel:SetFullWidth(true);
+    container:AddChild(lastLootImportLabel);
+
+    local lastPlayerImportLabel = Regrowth.AceGUI:Create("Label");
+    lastPlayerImportLabel:SetText("Last Imported Player Data: " ..
+        Regrowth:formatEpochForDisplay(Regrowth.Data.Storage.Players.timestamp));
+    lastPlayerImportLabel:SetFullWidth(true);
+    container:AddChild(lastPlayerImportLabel);
+
+    local spacer = Regrowth.AceGUI:Create("Label");
+    spacer:SetText(" ");
+    spacer:SetFullWidth(true);
+    spacer:SetHeight(10);
+    container:AddChild(spacer);
+
+    local mainMenuHeading = Regrowth.AceGUI:Create("Heading");
+    mainMenuHeading:SetText("Config");
+    mainMenuHeading:SetFullWidth(true);
+    container:AddChild(mainMenuHeading);
+
+    local itemTooltipToggle = Regrowth.AceGUI:Create("CheckBox");
+    itemTooltipToggle:SetValue(Regrowth_Config.TooltipToggles["bias"]);
+    itemTooltipToggle:SetType("checkbox");
+    itemTooltipToggle:SetLabel("Display Loot bias tooltips outside of raid.");
+    itemTooltipToggle:SetFullWidth(true);
+    itemTooltipToggle:SetCallback("OnValueChanged", function (self, e, v)
+        ToggleConfigOption("bias");
+    end);
+    container:AddChild(itemTooltipToggle);
+
+    local playerTooltipToggle = Regrowth.AceGUI:Create("CheckBox");
+    playerTooltipToggle:SetValue(Regrowth_Config.TooltipToggles["players"]);
+    playerTooltipToggle:SetType("checkbox");
+    playerTooltipToggle:SetLabel("Display Player tooltips outside of raid.");
+    playerTooltipToggle:SetFullWidth(true);
+    playerTooltipToggle:SetCallback("OnValueChanged", function (self, e, v)
+        ToggleConfigOption("players");
+    end);
+    container:AddChild(playerTooltipToggle);
+
+    local wishlistTooltipToggle = Regrowth.AceGUI:Create("CheckBox");
+    wishlistTooltipToggle:SetValue(Regrowth_Config.TooltipToggles["wishlist"]);
+    wishlistTooltipToggle:SetType("checkbox");
+    wishlistTooltipToggle:SetLabel("Display Wishlist tooltips outside of raid.");
+    wishlistTooltipToggle:SetFullWidth(true);
+    wishlistTooltipToggle:SetCallback("OnValueChanged", function (self, e, v)
+        ToggleConfigOption("wishlist");
+    end);
+    container:AddChild(wishlistTooltipToggle);
 end
 
 local function CreateDataSyncTab(container)
@@ -64,6 +161,38 @@ local function CreateDataSyncTab(container)
     container:AddChild(syncDataBtn);
 end
 
+local function GetImportSuccessMessage(type)
+    if type == "Website" then
+        return "Website data imported.";
+    end
+
+    if type == "RCLootCouncil" then
+        return "Loot history imported.";
+    end
+
+    if type == "Wishlists" then
+        return "Wishlist imported.";
+    end
+
+    return "Data imported.";
+end
+
+local function GetImportSkippedMessage(type)
+    if type == "Website" then
+        return "Website data not updated - your data is already the same or newer.";
+    end
+
+    if type == "RCLootCouncil" then
+        return "Loot history not updated - your data is already the same or newer.";
+    end
+
+    if type == "Wishlists" then
+        return "Wishlist not updated - your data is already the same or newer.";
+    end
+
+    return "Data not updated - your data is already the same or newer.";
+end
+
 local function CreateImportDataTab(container)
     local importDataHeading = Regrowth.AceGUI:Create("Heading");
     importDataHeading:SetText("Import Data");
@@ -81,16 +210,37 @@ local function CreateImportDataTab(container)
         local importData = importDataEb:GetText();
         local jsonAsTable = Regrowth.json.decode(importData);
 
-        local isValid = ValidateData(jsonAsTable);
+        local type = GetImportType(jsonAsTable);
+
+        local isValid = ValidateData(jsonAsTable, type);
 
         if not isValid then
-            error("Input data does not match schema");
+            error("Input data does not match expected schema.");
         end
 
-        UpdateLocalData(jsonAsTable);
+        local appliedCount, totalCount = UpdateLocalData(jsonAsTable, type);
+
+        importDataEb:ClearFocus();
+        importDataBtn:Disable();
+
+        if appliedCount and appliedCount > 0 then
+            Regrowth:success(GetImportSuccessMessage(type));
+        else
+            Regrowth:warning(GetImportSkippedMessage(type));
+        end
     end);
 
     container:AddChild(importDataEb);
+
+    local clearImportBtn = Regrowth.AceGUI:Create("Button");
+    clearImportBtn:SetText("Clear");
+    clearImportBtn:SetWidth(120);
+    clearImportBtn:SetCallback("OnClick", function()
+        importDataEb:SetText("");
+        importDataEb:ClearFocus();
+        importDataBtn:Enable();
+    end);
+    container:AddChild(clearImportBtn);
 end
 
 local function CreateLootCouncilTab(container)
@@ -101,9 +251,15 @@ local function CreateLootCouncilTab(container)
 
     local lootCouncilLbl = Regrowth.AceGUI:Create("Label");
     lootCouncilLbl:SetText(
-        "By default, all officers in the guild will be considered part of the loot council.\n\nAdditional members can be added.\n\n");
+        "By default, all officers in the guild will be considered part of the loot council.\n\nAdditional members can be added.");
     lootCouncilLbl:SetFullWidth(true);
     container:AddChild(lootCouncilLbl);
+
+    local spacer = Regrowth.AceGUI:Create("Label");
+    spacer:SetText(" ");
+    spacer:SetFullWidth(true);
+    spacer:SetHeight(10);
+    container:AddChild(spacer);
 
     local lootCouncilAdditionalHeading = Regrowth.AceGUI:Create("Heading");
     lootCouncilAdditionalHeading:SetText("Additional Members");
@@ -147,7 +303,7 @@ local function SelectTab(container, _, group)
 end
 
 local function CreateTabs()
-    if Regrowth.User.canSendUpdates then
+    if C_GuildInfo.IsGuildOfficer() then
         return {
             { text = "Main Menu",    value = "mainMenu" },
             { text = "Data Sync",    value = "dataSync" },
