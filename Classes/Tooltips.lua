@@ -34,7 +34,7 @@ local function AddWishlistDataToTooltip(tooltip)
         return
     end
 
-    local wanted = Regrowth:findByKeyInArray(Regrowth_Data.Wishlists.data, "itemId", itemID);
+    local wanted = Regrowth.Utils.Table:findByKeyInArray(Regrowth_Data.Wishlists.data, "itemId", itemID);
 
     if wanted then
         tooltip:AddLine(" ");
@@ -59,7 +59,7 @@ local function AddRegrowthItemDataToTooltip(tooltip)
         return
     end
 
-    local itemDataById = Regrowth:findByKeyInArray(Regrowth_Data.Items.data, "item_id", itemID);
+    local itemDataById = Regrowth.Utils.Table:findByKeyInArray(Regrowth_Data.Items.data, "item_id", itemID);
 
 
     if itemDataById and itemDataById.text then
@@ -70,7 +70,7 @@ local function AddRegrowthItemDataToTooltip(tooltip)
 end
 
 local function AddLootReceivedPlayerDataToTooltip(tooltip, name)
-    local receivedDataByName = Regrowth:findByKey(Regrowth_Data.LootReceived.data, name);
+    local receivedDataByName = Regrowth.Utils.Table:findByKey(Regrowth_Data.LootReceived.data, name);
 
     if not receivedDataByName then
         return;
@@ -110,8 +110,8 @@ local function AddLootReceivedPlayerDataToTooltip(tooltip, name)
     tooltip:AddDoubleLine("Total Loot:", totalText, 0.1, 1, 0.6, 1, 1, 1);
 
     if lootCount > 0 then
-        local lastWinEpoch = Regrowth:findByKey(receivedDataByName[1].when, "epoch");
-        tooltip:AddDoubleLine("Last Win:", Regrowth:formatEpochAsDateOnly(lastWinEpoch), 0.1, 1, 0.6, 1, 1, 1);
+        local lastWinEpoch = Regrowth.Utils.Table:findByKey(receivedDataByName[1].when, "epoch");
+        tooltip:AddDoubleLine("Last Win:", Regrowth.Utils.DateFormat:formatEpochAsDateOnly(lastWinEpoch), 0.1, 1, 0.6, 1, 1, 1);
     end
 
 end
@@ -123,7 +123,7 @@ local function AddRegrowthPlayerDataToTooltip(tooltip)
 
     local name = tooltip:GetUnit();
 
-    local playerDataByName = Regrowth:findByKeyInArray(Regrowth_Data.Players.data, "name", name);
+    local playerDataByName = Regrowth.Utils.Table:findByKeyInArray(Regrowth_Data.Players.data, "name", name);
 
     if not playerDataByName then
         return;

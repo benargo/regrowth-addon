@@ -63,14 +63,14 @@ local RegrowthData = Regrowth.Data;
 -- officer by rank name can't be rejected (or a non-officer wrongly
 -- admitted) due to the two mechanisms disagreeing.
 local function senderIsOfficer(senderName)
-    if type(senderName) ~= "string" or Regrowth:empty(senderName) then
+    if type(senderName) ~= "string" or Regrowth.Utils.Table:empty(senderName) then
         return false;
     end
 
     local nameNoRealm = senderName:match("(.+)-") or senderName;
 
-    for _, officerName in ipairs(Regrowth:getAllGuildOfficerNames()) do
-        if Regrowth:iEquals(officerName, nameNoRealm) then
+    for _, officerName in ipairs(Regrowth.Guild:getAllGuildOfficerNames()) do
+        if Regrowth.Utils.String:iEquals(officerName, nameNoRealm) then
             return true;
         end
     end
@@ -79,7 +79,7 @@ local function senderIsOfficer(senderName)
 end
 
 function Regrowth.Ace:OnCommReceived(prefix, payload, distribution, sender)
-    Regrowth:debug("HELLO");
+    Regrowth.Utils.Messaging:debug("HELLO");
 
     payload = Regrowth.Comm.Message:decompress(payload);
 
@@ -87,30 +87,30 @@ function Regrowth.Ace:OnCommReceived(prefix, payload, distribution, sender)
         return;
     end
 
-    if (Regrowth:isSelf(payload.sender, payload.senderFqn)) then
+    if (Regrowth.Addon:isSelf(payload.sender, payload.senderFqn)) then
         return;
     end
 
-    Regrowth:debug(payload.sender);
+    Regrowth.Utils.Messaging:debug(payload.sender);
 
     -- `sender` is the identity AceComm itself verified this message came
     -- from; payload.sender/payload.senderFqn are just strings the sender
     -- put in their own message and can set to anything. Validate the
     -- payload's claimed identity against the real `sender` first, so
     -- everything below is checked against a name we know is genuine.
-    if (type(payload.senderFqn) ~= "string" or Regrowth:empty(payload.senderFqn)) then
+    if (type(payload.senderFqn) ~= "string" or Regrowth.Utils.Table:empty(payload.senderFqn)) then
         return;
     end
 
     local ciSenderFqn = strlower(strtrim(payload.senderFqn));
     local ciPlayerName = strlower(strtrim(sender));
 
-    if (not Regrowth:strStartsWith(ciSenderFqn, ciPlayerName)) then
+    if (not Regrowth.Utils.String:strStartsWith(ciSenderFqn, ciPlayerName)) then
         return;
     end
 
     if (not senderIsOfficer(sender)) then
-        Regrowth:error("Received message from non-officer. Name = " .. tostring(sender));
+        Regrowth.Utils.Messaging:error("Received message from non-officer. Name = " .. tostring(sender));
         return;
     end
 
@@ -347,8 +347,8 @@ function Comm:_processSyncQueueTick()
     while receiver do
         self._queuedLookup[receiver] = nil;
 
-        if Regrowth:isGuildMemberOnline(receiver) then
-            Regrowth:success("Syncing data to '" .. receiver .. "'.");
+        if Regrowth.Guild:isGuildMemberOnline(receiver) then
+            Regrowth.Utils.Messaging:success("Syncing data to '" .. receiver .. "'.");
 
             local message = Regrowth.Comm.Message.new(
                 RegrowthData.Constants.Comm.Actions.handlereceiveddata,
@@ -405,10 +405,10 @@ function Comm:AutoSyncCheck()
     local receivers = RegrowthData:GetLootCouncilReceivers();
 
     for _, receiver in ipairs(receivers) do
-        local isSelf = Regrowth:iEquals(receiver, Regrowth.User.name);
+        local isSelf = Regrowth.Utils.String:iEquals(receiver, Regrowth.User.name);
 
-        if not Regrowth:empty(receiver) and not isSelf and not self:IsRecipientUpToDate(receiver) then
-            if Regrowth:isGuildMemberOnline(receiver) then
+        if not Regrowth.Utils.Table:empty(receiver) and not isSelf and not self:IsRecipientUpToDate(receiver) then
+            if Regrowth.Guild:isGuildMemberOnline(receiver) then
                 self:QueueSync(receiver);
             end
         end

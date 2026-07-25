@@ -70,7 +70,7 @@ function Regrowth:bootstrap(_, _, addonName)
 
     self:_init();
 
-    Regrowth:success("v" .. Regrowth.Data.Version.current .. " - Ready. Run /regrowth to start.");
+    Regrowth.Utils.Messaging:success("v" .. Regrowth.Data.Version.current .. " - Ready. Run /regrowth to start.");
 
     self._initialized = true;
 end

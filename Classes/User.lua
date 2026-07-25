@@ -20,7 +20,7 @@ function User:_init()
 
     self.name = UnitName("player");
     self.realm = GetRealmName():gsub("-", "");
-    self.fqn = Regrowth:getFullyQualifiedName(self.name, self.realm);
+    self.fqn = Regrowth.Addon:getFullyQualifiedName(self.name, self.realm);
 
     self._initialized = true;
 end

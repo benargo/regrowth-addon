@@ -54,11 +54,11 @@ end
 
 local function UpdateSystem(systemData)
     if isOlderData(systemData.timestamp, RegrowthData.Storage.System.timestamp) then
-        Regrowth:debug("Update for 'System' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'System' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'System'...");
+    Regrowth.Utils.Messaging:debug("Updating 'System'...");
 
     RegrowthData.Storage.System = systemData;
 
@@ -67,11 +67,11 @@ end
 
 local function UpdatePhases(phasesData)
     if isOlderData(phasesData.timestamp, RegrowthData.Storage.Phases.timestamp) then
-        Regrowth:debug("Update for 'Phases' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'Phases' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'Phases'...");
+    Regrowth.Utils.Messaging:debug("Updating 'Phases'...");
 
     -- Map to our internal shape and sort oldest-first, so we can derive
     -- each phase's end_date as "1 second before the next phase starts" -
@@ -113,11 +113,11 @@ end
 
 local function UpdatePriorities(prioritiesData)
     if isOlderData(prioritiesData.timestamp, RegrowthData.Storage.Priorities.timestamp) then
-        Regrowth:debug("Update for 'Priorities' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'Priorities' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'Priorities'...");
+    Regrowth.Utils.Messaging:debug("Updating 'Priorities'...");
 
     RegrowthData.Storage.Priorities = prioritiesData;
 
@@ -126,11 +126,11 @@ end
 
 local function UpdateItems(itemsData)
     if isOlderData(itemsData.timestamp, RegrowthData.Storage.Items.timestamp) then
-        Regrowth:debug("Update for 'Items' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'Items' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'Items'...");
+    Regrowth.Utils.Messaging:debug("Updating 'Items'...");
 
     local transformedItemsData = RegrowthData.Transformers:TransformItemsData(itemsData.data);
 
@@ -144,11 +144,11 @@ end
 
 local function UpdatePlayers(playersData)
     if isOlderData(playersData.timestamp, RegrowthData.Storage.Players.timestamp) then
-        Regrowth:debug("Update for 'Players' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'Players' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'Players'...");
+    Regrowth.Utils.Messaging:debug("Updating 'Players'...");
 
     RegrowthData.Storage.Players = playersData;
 
@@ -157,11 +157,11 @@ end
 
 local function UpdateLootCouncil(lootCouncilData)
     if isOlderData(lootCouncilData.timestamp, RegrowthData.Storage.LootCouncil.timestamp) then
-        Regrowth:debug("Update for 'LootCouncil' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'LootCouncil' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'LootCouncil'...");
+    Regrowth.Utils.Messaging:debug("Updating 'LootCouncil'...");
 
     local transformedLootCouncilData = RegrowthData.Transformers:TransformLootCouncillors(lootCouncilData.data);
 
@@ -175,11 +175,11 @@ end
 
 local function UpdateLootReceivedData(lootReceivedData)
     if isOlderData(lootReceivedData.timestamp, RegrowthData.Storage.LootReceived.timestamp) then
-        Regrowth:debug("Update for 'LootReceived' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'LootReceived' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'LootReceived'...");
+    Regrowth.Utils.Messaging:debug("Updating 'LootReceived'...");
 
     local transformedLootReceivedData = RegrowthData.Transformers:TransformedLootReceivedData(lootReceivedData.data);
 
@@ -193,11 +193,11 @@ end
 
 local function UpdateWishlistsData(wishlistsData)
     if isOlderData(wishlistsData.timestamp, RegrowthData.Storage.Wishlists.timestamp) then
-        Regrowth:debug("Update for 'Wishlists' skipped - current data is already current or newer.");
+        Regrowth.Utils.Messaging:debug("Update for 'Wishlists' skipped - current data is already current or newer.");
         return false;
     end
 
-    Regrowth:debug("Updating 'Wishlists'...");
+    Regrowth.Utils.Messaging:debug("Updating 'Wishlists'...");
 
     local transformedWishlistsData = RegrowthData.Transformers:TransformWishlistsData(wishlistsData.data);
 
@@ -247,12 +247,12 @@ end
 
 local function UpdateLocalDataFromSync(data, table)
     if type(data) ~= "table" then
-        Regrowth:error("Sync update for '" .. table .. "' rejected - malformed payload.");
+        Regrowth.Utils.Messaging:error("Sync update for '" .. table .. "' rejected - malformed payload.");
         return false;
     end
 
     if not RegrowthData.Validation:IsValidSyncTableData(table, data.data) then
-        Regrowth:error("Sync update for '" .. table .. "' rejected - failed schema validation.");
+        Regrowth.Utils.Messaging:error("Sync update for '" .. table .. "' rejected - failed schema validation.");
         return false;
     end
 
@@ -263,7 +263,7 @@ local function UpdateLocalDataFromSync(data, table)
     if isOlderData(incomingTimestamp, currentTimestamp) then
         -- Routine and expected (e.g. two officers' data already agreeing) -
         -- not worth alarming the player with a visible message every time.
-        Regrowth:debug("Sync update for '" .. table .. "' skipped - local data is already current.");
+        Regrowth.Utils.Messaging:debug("Sync update for '" .. table .. "' skipped - local data is already current.");
         return false;
     end
 
@@ -284,7 +284,7 @@ function RegrowthData:UpdateLocalData(newData, table, timestamp)
             table ~= "Wishlists" and
             table ~= "Phases")
     then
-        Regrowth:error("Invalid table '" .. table .. "'.");
+        Regrowth.Utils.Messaging:error("Invalid table '" .. table .. "'.");
         return;
     end
 
@@ -308,8 +308,8 @@ function RegrowthData:UpdateLocalData(newData, table, timestamp)
 end
 
 function RegrowthData:UpdateLocalSavedData()
-    if not Regrowth:isCurrentVersion() then
-        Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
+    if not Regrowth.Addon:isCurrentVersion() then
+        Regrowth.Utils.Messaging:warning("Can't update local Regrowth_Data - Version out of date.");
         return;
     end
 
@@ -317,8 +317,8 @@ function RegrowthData:UpdateLocalSavedData()
 end
 
 function RegrowthData:UpdateLocalDataAndSave(newData, table, timestamp)
-    if not Regrowth:isCurrentVersion() then
-        Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
+    if not Regrowth.Addon:isCurrentVersion() then
+        Regrowth.Utils.Messaging:warning("Can't update local Regrowth_Data - Version out of date.");
         return false;
     end
 
@@ -330,8 +330,8 @@ function RegrowthData:UpdateLocalDataAndSave(newData, table, timestamp)
 end
 
 function RegrowthData:UpdateLocalProtectedDataFromSync(newData)
-    if not Regrowth:isCurrentVersion() then
-        Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
+    if not Regrowth.Addon:isCurrentVersion() then
+        Regrowth.Utils.Messaging:warning("Can't update local Regrowth_Data - Version out of date.");
         return 0, 0;
     end
 
@@ -342,7 +342,7 @@ function RegrowthData:UpdateLocalProtectedDataFromSync(newData)
         if newData[key] then
             totalCount = totalCount + 1;
 
-            Regrowth:debug("New '" .. key .. "' data received. Updating...");
+            Regrowth.Utils.Messaging:debug("New '" .. key .. "' data received. Updating...");
 
             if UpdateLocalDataFromSync(newData[key], key) then
                 appliedCount = appliedCount + 1;
@@ -363,8 +363,8 @@ function RegrowthData:UpdateLocalProtectedDataFromSync(newData)
 end
 
 function RegrowthData:UpdateLocalOpenDataFromSync(newData)
-    if not Regrowth:isCurrentVersion() then
-        Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
+    if not Regrowth.Addon:isCurrentVersion() then
+        Regrowth.Utils.Messaging:warning("Can't update local Regrowth_Data - Version out of date.");
         return 0, 0;
     end
 
@@ -374,7 +374,7 @@ function RegrowthData:UpdateLocalOpenDataFromSync(newData)
     if newData["System"] then
         totalCount = totalCount + 1;
 
-        Regrowth:debug("New 'System' data received. Updating...");
+        Regrowth.Utils.Messaging:debug("New 'System' data received. Updating...");
 
         if UpdateLocalDataFromSync(newData["System"], "System") then
             appliedCount = appliedCount + 1;
@@ -385,8 +385,8 @@ function RegrowthData:UpdateLocalOpenDataFromSync(newData)
 end
 
 function RegrowthData:UpdateLocalDataAndSaveFromImport(importData, type)
-    if not Regrowth:isCurrentVersion() then
-        Regrowth:warning("Can't update local Regrowth_Data - Version out of date.");
+    if not Regrowth.Addon:isCurrentVersion() then
+        Regrowth.Utils.Messaging:warning("Can't update local Regrowth_Data - Version out of date.");
         return 0, 0;
     end
 
@@ -581,7 +581,7 @@ function RegrowthData:GetLootCouncilReceivers()
     local receivers = {};
     local seen = {};
 
-    for _, officerName in ipairs(Regrowth:getAllGuildOfficerNames()) do
+    for _, officerName in ipairs(Regrowth.Guild:getAllGuildOfficerNames()) do
         if not seen[officerName] then
             seen[officerName] = true;
             table.insert(receivers, officerName);
@@ -619,7 +619,7 @@ function RegrowthData:_init()
 
     self.Version.current = C_AddOns.GetAddOnMetadata(Regrowth.name, "Version") or self.Version.current;
 
-    if not Regrowth:empty(Regrowth_Data) then
+    if not Regrowth.Utils.Table:empty(Regrowth_Data) then
         self.Storage = Regrowth_Data
     else
         Regrowth_Data = self.Storage;

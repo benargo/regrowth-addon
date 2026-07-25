@@ -19,11 +19,11 @@ local function UpdateLocalLootCouncil(lootCouncil)
     local applied = Regrowth.Data:UpdateLocalDataAndSave(lootCouncil, "LootCouncil");
 
     if not applied then
-        Regrowth:warning("Loot council not updated - your data is already the same or newer.");
+        Regrowth.Utils.Messaging:warning("Loot council not updated - your data is already the same or newer.");
         return;
     end
 
-    Regrowth:success("Loot council updated.");
+    Regrowth.Utils.Messaging:success("Loot council updated.");
 
     local delay = Regrowth.Comm.IMPORT_DELAY_SECONDS;
 
@@ -83,19 +83,19 @@ local function CreateMainMenuTab(container)
     );
 
     local lastSyncLabel = Regrowth.AceGUI:Create("Label");
-    lastSyncLabel:SetText("Last Sync Received: " .. Regrowth:formatEpochForDisplay(lastSyncEpoch));
+    lastSyncLabel:SetText("Last Sync Received: " .. Regrowth.Utils.DateFormat:formatEpochForDisplay(lastSyncEpoch));
     lastSyncLabel:SetFullWidth(true);
     container:AddChild(lastSyncLabel);
 
     local lastLootImportLabel = Regrowth.AceGUI:Create("Label");
     lastLootImportLabel:SetText("Last Imported Loot Data: " ..
-        Regrowth:formatEpochForDisplay(Regrowth.Data:GetLastLootReceivedEpoch()));
+        Regrowth.Utils.DateFormat:formatEpochForDisplay(Regrowth.Data:GetLastLootReceivedEpoch()));
     lastLootImportLabel:SetFullWidth(true);
     container:AddChild(lastLootImportLabel);
 
     local lastPlayerImportLabel = Regrowth.AceGUI:Create("Label");
     lastPlayerImportLabel:SetText("Last Imported Player Data: " ..
-        Regrowth:formatEpochForDisplay(Regrowth.Data.Storage.Players.timestamp));
+        Regrowth.Utils.DateFormat:formatEpochForDisplay(Regrowth.Data.Storage.Players.timestamp));
     lastPlayerImportLabel:SetFullWidth(true);
     container:AddChild(lastPlayerImportLabel);
 
@@ -224,9 +224,9 @@ local function CreateImportDataTab(container)
         importDataBtn:Disable();
 
         if appliedCount and appliedCount > 0 then
-            Regrowth:success(GetImportSuccessMessage(type));
+            Regrowth.Utils.Messaging:success(GetImportSuccessMessage(type));
         else
-            Regrowth:warning(GetImportSkippedMessage(type));
+            Regrowth.Utils.Messaging:warning(GetImportSkippedMessage(type));
         end
     end);
 

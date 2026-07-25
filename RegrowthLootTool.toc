@@ -5,6 +5,7 @@
 ## Author: Amy (Kyukon / Khamira) & SoulJuice
 ## Version: 0.8.0-beta.1
 ## SavedVariables: Regrowth_Data Regrowth_Config
+## OptionalDeps: WoWUnit
 
 # Libraries
 libraries.xml
@@ -18,14 +19,32 @@ Classes/Data/Transformers.lua
 Classes/Data/Validation.lua
 
 # Helpers
-Utils/helpers.lua
+Utils/Messaging.lua
+Utils/DebugMode.lua
+Utils/Table.lua
+Utils/String.lua
+Utils/DateFormat.lua
 Utils/json.lua
 
 # Class objects
+Classes/Addon.lua
+Classes/Guild.lua
 Classes/Commands.lua
 Classes/User.lua
 Classes/Frames.lua
 Classes/Tooltips.lua
+Classes/Interface/PriorityLabel.lua
 Classes/DataSync/Comm.lua
 Classes/DataSync/Message.lua
 Classes/DataSync/Actions.lua
+
+# Tests (no-op without the WoWUnit companion addon installed)
+tests/Utils/Table.tests.lua
+tests/Utils/String.tests.lua
+tests/Utils/DateFormat.tests.lua
+tests/Utils/DebugMode.tests.lua
+tests/Classes/Addon.tests.lua
+tests/Classes/Guild.tests.lua
+tests/Classes/Interface/PriorityLabel.tests.lua
+tests/Classes/Data/Validation.tests.lua
+tests/Classes/Data/Transformers.tests.lua

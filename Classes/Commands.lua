@@ -24,7 +24,7 @@ local Commands = {
             local receivers = RegrowthData:GetLootCouncilReceivers();
 
             for _, receiver in ipairs(receivers) do
-                if not Regrowth:iEquals(receiver, Regrowth.User.name) then
+                if not Regrowth.Utils.String:iEquals(receiver, Regrowth.User.name) then
                     Regrowth.Comm:QueueSync(receiver);
                 end
             end
@@ -32,11 +32,11 @@ local Commands = {
             return;
         end
 
-        Regrowth:error("You are not authorised to send data.");
+        Regrowth.Utils.Messaging:error("You are not authorised to send data.");
     end,
     syncto = function(name)
         if not C_GuildInfo.IsGuildOfficer() then
-            Regrowth:error("You are not authorised to send data.");
+            Regrowth.Utils.Messaging:error("You are not authorised to send data.");
             return;
         end
 
@@ -46,8 +46,8 @@ local Commands = {
 
         name = name and strtrim(name) or "";
 
-        if Regrowth:empty(name) then
-            Regrowth:error("Usage: /rg syncto [player name]");
+        if Regrowth.Utils.Table:empty(name) then
+            Regrowth.Utils.Messaging:error("Usage: /rg syncto [player name]");
             return;
         end
 
@@ -55,25 +55,25 @@ local Commands = {
         local matchedReceiver = nil;
 
         for _, receiver in ipairs(receivers) do
-            if Regrowth:iEquals(receiver, name) then
+            if Regrowth.Utils.String:iEquals(receiver, name) then
                 matchedReceiver = receiver;
                 break;
             end
         end
 
         if not matchedReceiver then
-            Regrowth:error("'" .. name .. "' is not a loot council member.");
+            Regrowth.Utils.Messaging:error("'" .. name .. "' is not a loot council member.");
             return;
         end
 
         if Regrowth.Comm:IsRecipientUpToDate(matchedReceiver) then
-            Regrowth:warning("'" .. matchedReceiver .. "' already has the current data - nothing to sync.");
+            Regrowth.Utils.Messaging:warning("'" .. matchedReceiver .. "' already has the current data - nothing to sync.");
             return;
         end
 
         Regrowth.Comm:QueueSyncPriority(matchedReceiver);
 
-        Regrowth:success("'" .. matchedReceiver .. "' moved to the front of the sync queue.");
+        Regrowth.Utils.Messaging:success("'" .. matchedReceiver .. "' moved to the front of the sync queue.");
     end,
     toggle = function(type)
         if Regrowth_Config.TooltipToggles[type] then
@@ -89,7 +89,7 @@ local Commands = {
 };
 
 local function HookinTime()
-    Regrowth:debug("kek");
+    Regrowth.Utils.Messaging:debug("kek");
 end
 
 local function _dispatch(str)

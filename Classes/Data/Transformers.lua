@@ -11,7 +11,7 @@ local function GetPriorityForId(priorityData)
     local pID = priorityData.priority_id;
     local weight = priorityData.weight;
 
-    if Regrowth:empty(Regrowth_Data.Priorities.data) then
+    if Regrowth.Utils.Table:empty(Regrowth_Data.Priorities.data) then
         return {
             priority_id = pID,
             weight = weight,
@@ -19,7 +19,7 @@ local function GetPriorityForId(priorityData)
         };
     end
 
-    local priority = Regrowth:findByKeyInArray(Regrowth_Data.Priorities.data, "id", pID);
+    local priority = Regrowth.Utils.Table:findByKeyInArray(Regrowth_Data.Priorities.data, "id", pID);
 
     return {
         priority_id = pID,
@@ -34,11 +34,11 @@ local function GetIconTextForPriority(priorityEntry)
     -- "Protection Paladin" gets its own icon, not just a generic Paladin
     -- one) - use that directly whenever it's present. Only fall back to a
     -- class-detected generic icon if it's missing.
-    if not Regrowth:empty(priorityEntry.icon) then
-        return Regrowth:getPriorityIconText(priorityEntry.icon);
+    if not Regrowth.Utils.Table:empty(priorityEntry.icon) then
+        return Regrowth.Interface.PriorityLabel:getPriorityIconText(priorityEntry.icon);
     end
 
-    return Regrowth:getClassIconTextForPriorityLabel(priorityEntry.name);
+    return Regrowth.Interface.PriorityLabel:getClassIconTextForPriorityLabel(priorityEntry.name);
 end
 
 local function CreatePriorityTextFromWeightings(priorityData)
@@ -51,7 +51,7 @@ local function CreatePriorityTextFromWeightings(priorityData)
 
     for idx in ipairs(priorityData) do
         local label = GetIconTextForPriority(priorityData[idx]) ..
-            Regrowth:colorizePriorityLabel(priorityData[idx].name);
+            Regrowth.Interface.PriorityLabel:colorizePriorityLabel(priorityData[idx].name);
 
         if text == "" then
             text = label;
@@ -161,8 +161,8 @@ local function FilterNewLootReceivedData(transformedData)
 
         for _, data in ipairs(nameData) do
             if lrData[name] then
-                if Regrowth:findByKeyInArray(lrData[name], "id", data.id) then
-                    Regrowth:debug("Duplicate entry '" .. data.id .. "' found. Ignoring.");
+                if Regrowth.Utils.Table:findByKeyInArray(lrData[name], "id", data.id) then
+                    Regrowth.Utils.Messaging:debug("Duplicate entry '" .. data.id .. "' found. Ignoring.");
                 else
                     table.insert(merged[name], data);
                 end
@@ -176,7 +176,7 @@ local function FilterNewLootReceivedData(transformedData)
 end
 
 local function MergeLootReceivedData(filteredData)
-    local newData = Regrowth:deepCopyTable(Regrowth_Data.LootReceived.data);
+    local newData = Regrowth.Utils.Table:deepCopyTable(Regrowth_Data.LootReceived.data);
 
     for name, nameData in pairs(filteredData) do
         if not newData[name] then
@@ -216,7 +216,7 @@ local function TransformWishlistsData(wishlistsData)
             local dodgyName = string.match(name, "%(.+%)");
 
             if dodgyName then
-                Regrowth:warning("Not adding '" ..
+                Regrowth.Utils.Messaging:warning("Not adding '" ..
                 name .. "' due to unexpected characters in character name. Please check wishlist.");
             else
                 table.insert(wantedBy, {
